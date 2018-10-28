@@ -8,17 +8,16 @@ from PIL import Image, ImageTk
 class QuickCrop:
     def __init__(self, master):
         self.master = master
-        master.geometry('400x400')
         master.title("Quick Crop")
 
         self.label = Label(master, text="Select a folder to search for images.")
-        self.label.pack()
+        self.label.pack(padx=20, pady=20)
 
         self.greet_button = Button(master, text="Open Folder", command=self.choose_folder)
-        self.greet_button.pack()
+        self.greet_button.pack(padx=20, pady=20)
 
         self.close_button = Button(master, text="Close", command=master.quit)
-        self.close_button.pack()
+        self.close_button.pack(padx=20, pady=20)
 
         self.status = Label(master, text="Waiting for images…", bd=1, relief=SUNKEN, anchor=W)
         self.status.pack(side=BOTTOM, fill=X)
@@ -31,6 +30,8 @@ class QuickCrop:
         else:
             self.images = images
             self.update_status_bar("Found %d images" % len(self.images))
+            self.unpack_buttons()
+            self.show_images(0)
 
     def find_images(self, folder_path):
         images = []
@@ -43,6 +44,19 @@ class QuickCrop:
 
     def update_status_bar(self, text):
         self.status["text"] = text
+
+    def show_images(self, index):
+        image = Image.open(str(self.images[index]))
+        display = ImageTk.PhotoImage(image)
+
+        self.image_label = Label(self.master, image=display)
+        self.image_label.image = display
+        self.image_label.pack(expand=True, fill='both')
+
+    def unpack_buttons(self):
+        self.label.pack_forget()
+        self.greet_button.pack_forget()
+        self.close_button.pack_forget()
 
 root = Tk()
 my_gui = QuickCrop(root)
