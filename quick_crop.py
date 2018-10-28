@@ -22,6 +22,9 @@ class QuickCrop:
         self.status = Label(master, text="Waiting for images…", bd=1, relief=SUNKEN, anchor=W)
         self.status.pack(side=BOTTOM, fill=X)
 
+        self.padding_x = 50
+        self.padding_y = 50
+
     def choose_folder(self):
         folder_selected = askdirectory()
         images = self.find_images(folder_selected)
@@ -49,9 +52,42 @@ class QuickCrop:
         image = Image.open(str(self.images[index]))
         display = ImageTk.PhotoImage(image)
 
-        self.image_label = Label(self.master, image=display)
-        self.image_label.image = display
-        self.image_label.pack(expand=True, fill='both')
+        self.canvas = Canvas(self.master, width=image.width + 2*self.padding_x,
+                                          height=image.height + 2*self.padding_y,
+                                          cursor="cross")
+        self.canvas.image = display
+        self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
+
+        self.canvas.pack(expand=YES, fill=BOTH)
+
+        self.canvas.bind("<ButtonPress-1>", self.on_button_press)
+        self.canvas.bind("<B1-Motion>", self.on_move_press)
+        self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
+
+        self.rect = None
+        self.start_x = self.start_y = None
+        self.x = self.y = 0
+
+    def on_button_press(self, event):
+        # save mouse drag start position
+        self.start_x = event.x
+        self.start_y = event.y
+
+        self.rect = self.canvas.create_rectangle(self.x, self.y, 1, 1, outline='magenta', fill="black", stipple="gray50")
+
+    def on_move_press(self, event):
+        current_x, current_y = (event.x, event.y)
+
+        # expand rectangle as you drag the mouse
+        self.canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
+
+        print(self.start_x - self.padding_x,
+              self.start_y - self.padding_y, 
+              current_x - self.padding_x, 
+              current_y - self.padding_y)
+
+    def on_button_release(self, event):
+        pass
 
     def unpack_buttons(self):
         self.label.pack_forget()
