@@ -1,6 +1,7 @@
 import os
 import pathlib
-from tkinter import Tk, Label, Button
+from tkinter import *
+from tkinter import messagebox
 from tkinter.filedialog import askdirectory
 from PIL import Image, ImageTk
 
@@ -19,10 +20,17 @@ class QuickCrop:
         self.close_button = Button(master, text="Close", command=master.quit)
         self.close_button.pack()
 
+        self.status = Label(master, text="Waiting for images…", bd=1, relief=SUNKEN, anchor=W)
+        self.status.pack(side=BOTTOM, fill=X)
+
     def choose_folder(self):
         folder_selected = askdirectory()
         images = self.find_images(folder_selected)
-        print(images)
+        if images == []:
+            messagebox.showerror("Error", "Couldn't find any images in %s" % folder_selected)
+        else:
+            self.images = images
+            self.update_status_bar("Found %d images" % len(self.images))
 
     def find_images(self, folder_path):
         images = []
@@ -32,6 +40,9 @@ class QuickCrop:
                     image_file = pathlib.PurePath(root, file)
                     images.append(image_file)
         return images
+
+    def update_status_bar(self, text):
+        self.status["text"] = text
 
 root = Tk()
 my_gui = QuickCrop(root)
