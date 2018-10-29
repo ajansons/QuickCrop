@@ -24,6 +24,7 @@ class QuickCrop:
 
         self.padding_x = 50
         self.padding_y = 50
+        self.index = 0
 
     def choose_folder(self):
         folder_selected = askdirectory()
@@ -32,10 +33,9 @@ class QuickCrop:
             messagebox.showerror("Error", "Couldn't find any images in %s" % folder_selected)
         else:
             self.images = images
-            self.update_status_bar("Found %d images" % len(self.images))
             self.unpack_buttons()
-            self.show_images(0)
-
+            self.show_images()
+            
     def find_images(self, folder_path):
         images = []
         for root, dirs, files in os.walk(folder_path):
@@ -48,8 +48,8 @@ class QuickCrop:
     def update_status_bar(self, text):
         self.status["text"] = text
 
-    def show_images(self, index):
-        image = Image.open(str(self.images[index]))
+    def show_images(self):
+        image = Image.open(str(self.images[self.index]))
         display = ImageTk.PhotoImage(image)
 
         self.canvas = Canvas(self.master, width=image.width + 2*self.padding_x,
@@ -67,6 +67,8 @@ class QuickCrop:
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
+
+        self.update_status_bar("image %d/%d" % (self.index + 1, len(self.images)))
 
     def on_button_press(self, event):
         # save mouse drag start position
@@ -87,7 +89,9 @@ class QuickCrop:
               current_y - self.padding_y)
 
     def on_button_release(self, event):
-        pass
+        self.index += 1
+        self.canvas.pack_forget()
+        self.show_images()
 
     def unpack_buttons(self):
         self.label.pack_forget()
