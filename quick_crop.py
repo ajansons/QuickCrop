@@ -55,7 +55,9 @@ class QuickCrop:
         self.canvas = Canvas(self.master, width=image.width + 2*self.padding_x,
                                           height=image.height + 2*self.padding_y,
                                           cursor="cross")
-        self.canvas.image = display
+        # We need to have a reference to display so it doesn't get garbage collected
+        self.canvas.image = image
+        self.canvas.display = display
         self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
 
         self.canvas.pack(expand=YES, fill=BOTH)
@@ -83,12 +85,15 @@ class QuickCrop:
         # expand rectangle as you drag the mouse
         self.canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
 
-        print(self.start_x - self.padding_x,
+        self.crop_rectangle = (self.start_x - self.padding_x,
               self.start_y - self.padding_y, 
               current_x - self.padding_x, 
               current_y - self.padding_y)
+        print(self.crop_rectangle)
 
     def on_button_release(self, event):
+        cropped_file_name = self.images[self.index].with_name("cropped_" + self.images[self.index].name)
+        cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
         self.index += 1
         self.canvas.pack_forget()
         self.show_images()
