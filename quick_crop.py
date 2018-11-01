@@ -62,9 +62,14 @@ class QuickCrop:
 
         self.canvas.pack(expand=YES, fill=BOTH)
 
-        self.canvas.bind("<ButtonPress-1>", self.on_button_press)
-        self.canvas.bind("<B1-Motion>", self.on_move_press)
-        self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
+        # Left mouse stuff
+        self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_press)
+        self.canvas.bind("<B1-Motion>", self.on_left_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_left_mouse_release)
+
+        # Right mouse stuff
+        self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
+        self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
 
         self.rect = None
         self.start_x = self.start_y = None
@@ -72,14 +77,20 @@ class QuickCrop:
 
         self.update_status_bar("image %d/%d" % (self.index + 1, len(self.images)))
 
-    def on_button_press(self, event):
+    def next_image(self):
+        self.index += 1
+        self.canvas.pack_forget()
+        self.show_images()
+
+    # Left mouse stuff
+    def on_left_mouse_press(self, event):
         # save mouse drag start position
         self.start_x = event.x
         self.start_y = event.y
 
         self.rect = self.canvas.create_rectangle(self.x, self.y, 1, 1, outline='magenta', fill="black", stipple="gray50")
 
-    def on_move_press(self, event):
+    def on_left_drag(self, event):
         current_x, current_y = (event.x, event.y)
 
         # expand rectangle as you drag the mouse
@@ -91,12 +102,18 @@ class QuickCrop:
               current_y - self.padding_y)
         print(self.crop_rectangle)
 
-    def on_button_release(self, event):
+    def on_left_mouse_release(self, event):
         cropped_file_name = self.images[self.index].with_name("cropped_" + self.images[self.index].name)
         cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
-        self.index += 1
-        self.canvas.pack_forget()
-        self.show_images()
+        self.next_image()
+
+    # Right mouse stuff
+    def on_right_mouse_press(self, event):
+        os.remove((str(self.images[self.index])))
+        self.next_image()
+    
+    def on_right_mouse_release(self, event):
+        pass
 
     def unpack_buttons(self):
         self.label.pack_forget()
