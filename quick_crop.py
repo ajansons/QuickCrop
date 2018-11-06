@@ -100,11 +100,27 @@ class QuickCrop:
               self.start_y - self.padding_y, 
               current_x - self.padding_x, 
               current_y - self.padding_y)
-        print(self.crop_rectangle)
+        #print(self.crop_rectangle)
 
     def on_left_mouse_release(self, event):
-        cropped_file_name = self.images[self.index].with_name("cropped_" + self.images[self.index].name)
-        cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
+
+        print(self.index, self.crop_rectangle)
+
+        self.crop_rectangle = (
+            self.snap_x(self.crop_rectangle[0]),
+            self.snap_y(self.crop_rectangle[1]),
+            self.snap_x(self.crop_rectangle[2]),
+            self.snap_y(self.crop_rectangle[3])
+        )
+
+        no_area = self.crop_rectangle[0] == self.crop_rectangle[2] or self.crop_rectangle[1] == self.crop_rectangle[3]
+
+        print(self.index, self.crop_rectangle)
+
+        if not no_area:
+            cropped_file_name = self.images[self.index].with_name("cropped_" + self.images[self.index].name)
+            cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
+
         self.next_image()
 
     # Right mouse stuff
@@ -119,6 +135,22 @@ class QuickCrop:
         self.label.pack_forget()
         self.greet_button.pack_forget()
         self.close_button.pack_forget()
+
+    def snap_x(self, x):
+        if x < 0:
+            return 0
+        elif x > self.canvas.image.width:
+            return self.canvas.image.width
+        else:
+            return x
+
+    def snap_y(self, y):
+        if y < 0:
+            return 0
+        elif y > self.canvas.image.height:
+            return self.canvas.image.height
+        else:
+            return y
 
 root = Tk()
 my_gui = QuickCrop(root)
