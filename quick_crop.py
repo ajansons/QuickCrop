@@ -80,7 +80,10 @@ class QuickCrop:
     def next_image(self):
         self.index += 1
         self.canvas.pack_forget()
-        self.show_images()
+        if self.index < len(self.images):
+            self.show_images()
+        else:
+            self.update_status_bar("All done!")
 
     # Left mouse stuff
     def on_left_mouse_press(self, event):
