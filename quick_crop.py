@@ -25,6 +25,8 @@ class QuickCrop:
         self.padding_x = 50
         self.padding_y = 50
         self.index = 0
+        self.max_width = 1280
+        self.max_height = 720
 
     def choose_folder(self):
         folder_selected = askdirectory()
@@ -49,14 +51,25 @@ class QuickCrop:
         self.status["text"] = text
 
     def show_images(self):
-        image = Image.open(str(self.images[self.index]))
-        display = ImageTk.PhotoImage(image)
-
-        self.canvas = Canvas(self.master, width=image.width + 2*self.padding_x,
-                                          height=image.height + 2*self.padding_y,
+        self.canvas = Canvas(self.master, width=self.max_width + 2*self.padding_x,
+                                          height=self.max_height + 2*self.padding_y,
                                           cursor="cross")
+
+        image = Image.open(str(self.images[self.index]))
+        self.should_resize = image.width > self.max_width or image.height > self.max_height
+
+        if self.should_resize:
+            max_dim = self.max_width if image.width > image.height else self.max_height
+            dim_to_scale = image.width if image.width > image.height else image.height
+            self.scale_factor = max_dim/dim_to_scale
+            self.upscale_factor = dim_to_scale/max_dim
+            self.original_image = image
+            self.canvas.image = image.resize((int(image.width * self.scale_factor), int(image.height * self.scale_factor)))
+        else:
+            self.canvas.image = image
+
+        display = ImageTk.PhotoImage(self.canvas.image)
         # We need to have a reference to display so it doesn't get garbage collected
-        self.canvas.image = image
         self.canvas.display = display
         self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
 
@@ -121,6 +134,15 @@ class QuickCrop:
         print(self.index, self.crop_rectangle)
 
         if not no_area:
+            if self.should_resize:
+              self.crop_rectangle = (
+              self.crop_rectangle[0] * self.upscale_factor,
+              self.crop_rectangle[1] * self.upscale_factor,
+              self.crop_rectangle[2] * self.upscale_factor,
+              self.crop_rectangle[3] * self.upscale_factor, 
+              )
+              self.canvas.image = self.original_image
+
             cropped_file_name = self.images[self.index]
             cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
 
