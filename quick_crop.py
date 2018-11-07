@@ -85,13 +85,16 @@ class QuickCrop:
         self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
         self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
 
+        # Spacebar stuff
+        self.canvas.bind_all("<space>", self.next_image)
+
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
 
         self.update_status_bar("image %d/%d" % (self.index + 1, len(self.images)))
 
-    def next_image(self):
+    def next_image(self, event=None):
         self.index += 1
         self.canvas.pack_forget()
         if self.index < len(self.images):
