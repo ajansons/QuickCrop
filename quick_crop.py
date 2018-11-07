@@ -118,7 +118,7 @@ class QuickCrop:
         print(self.index, self.crop_rectangle)
 
         if not no_area:
-            cropped_file_name = self.images[self.index].with_name("cropped_" + self.images[self.index].name)
+            cropped_file_name = self.images[self.index]
             cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
 
         self.next_image()
