@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import gc
 import pathlib
 from tkinter import *
 from tkinter import messagebox
@@ -46,6 +47,7 @@ class QuickCrop:
                 if file.lower().endswith(".jpg"):
                     image_file = pathlib.PurePath(root, file)
                     images.append(image_file)
+            gc.collect()
         return images
 
     def update_status_bar(self, text):
@@ -76,23 +78,25 @@ class QuickCrop:
 
         self.canvas.pack(expand=YES, fill=BOTH)
 
-        # Left mouse stuff
+        # Left mouse - ready for crop
         self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_press)
         self.canvas.bind("<B1-Motion>", self.on_left_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_left_mouse_release)
 
-        # Right mouse stuff
+        # Right mouse - delete and move on
         self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
         self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
 
-        # Spacebar stuff
+        # Spacebar - do nothing and pass
         self.canvas.bind_all("<space>", self.next_image)
 
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
 
-        self.update_status_bar("image %d/%d" % (self.index + 1, len(self.images)))
+        file_name = self.images[self.index]
+        img_label = os.path.splitext(file_name)[0]
+        self.update_status_bar("image %d/%d, path/label %s" % (self.index + 1, len(self.images), img_label))
 
     def next_image(self, event=None):
         self.index += 1
@@ -152,7 +156,7 @@ class QuickCrop:
 
         self.next_image()
 
-    # Right mouse stuff
+    # Right mouse, delete the current image
     def on_right_mouse_press(self, event):
         os.remove((str(self.images[self.index])))
         self.next_image()
