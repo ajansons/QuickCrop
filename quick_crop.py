@@ -88,6 +88,9 @@ class QuickCrop:
         # Spacebar stuff
         self.canvas.bind_all("<space>", self.next_image)
 
+        # Escape stuff
+        self.canvas.bind_all("<Escape>", self.cancel_crop)
+
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
@@ -109,48 +112,50 @@ class QuickCrop:
         self.start_y = event.y
 
         self.rect = self.canvas.create_rectangle(self.x, self.y, 1, 1, outline='magenta', fill="black", stipple="gray50")
+        self.cancelled = False
 
     def on_left_drag(self, event):
-        current_x, current_y = (event.x, event.y)
+        if not self.cancelled:
+            current_x, current_y = (event.x, event.y)
 
-        # expand rectangle as you drag the mouse
-        self.canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
+            # expand rectangle as you drag the mouse
+            self.canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
 
-        self.crop_rectangle = (self.start_x - self.padding_x,
-              self.start_y - self.padding_y, 
-              current_x - self.padding_x, 
-              current_y - self.padding_y)
-        #print(self.crop_rectangle)
+            self.crop_rectangle = (self.start_x - self.padding_x,
+                self.start_y - self.padding_y, 
+                current_x - self.padding_x, 
+                current_y - self.padding_y)
+            #print(self.crop_rectangle)
 
     def on_left_mouse_release(self, event):
+        if not self.cancelled:
+            print(self.index, self.crop_rectangle)
 
-        print(self.index, self.crop_rectangle)
+            self.crop_rectangle = (
+                self.snap_x(self.crop_rectangle[0]),
+                self.snap_y(self.crop_rectangle[1]),
+                self.snap_x(self.crop_rectangle[2]),
+                self.snap_y(self.crop_rectangle[3])
+            )
 
-        self.crop_rectangle = (
-            self.snap_x(self.crop_rectangle[0]),
-            self.snap_y(self.crop_rectangle[1]),
-            self.snap_x(self.crop_rectangle[2]),
-            self.snap_y(self.crop_rectangle[3])
-        )
+            no_area = self.crop_rectangle[0] == self.crop_rectangle[2] or self.crop_rectangle[1] == self.crop_rectangle[3]
 
-        no_area = self.crop_rectangle[0] == self.crop_rectangle[2] or self.crop_rectangle[1] == self.crop_rectangle[3]
+            print(self.index, self.crop_rectangle)
 
-        print(self.index, self.crop_rectangle)
+            if not no_area:
+                if self.should_resize:
+                    self.crop_rectangle = (
+                        self.crop_rectangle[0] * self.upscale_factor,
+                        self.crop_rectangle[1] * self.upscale_factor,
+                        self.crop_rectangle[2] * self.upscale_factor,
+                        self.crop_rectangle[3] * self.upscale_factor, 
+                    )
+                    self.canvas.image = self.original_image
 
-        if not no_area:
-            if self.should_resize:
-              self.crop_rectangle = (
-              self.crop_rectangle[0] * self.upscale_factor,
-              self.crop_rectangle[1] * self.upscale_factor,
-              self.crop_rectangle[2] * self.upscale_factor,
-              self.crop_rectangle[3] * self.upscale_factor, 
-              )
-              self.canvas.image = self.original_image
+                cropped_file_name = self.images[self.index]
+                cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
 
-            cropped_file_name = self.images[self.index]
-            cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
-
-        self.next_image()
+            self.next_image()
 
     # Right mouse stuff
     def on_right_mouse_press(self, event):
@@ -159,6 +164,11 @@ class QuickCrop:
     
     def on_right_mouse_release(self, event):
         pass
+
+    # Escape
+    def cancel_crop(self, event):
+        self.cancelled = True
+        self.canvas.delete(self.rect)
 
     def unpack_buttons(self):
         self.label.pack_forget()
