@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import gc
 import pathlib
 from tkinter import *
 from tkinter import messagebox
@@ -39,7 +38,7 @@ class QuickCrop:
             self.images = images
             self.unpack_buttons()
             self.show_images()
-            
+
     def find_images(self, folder_path):
         images = []
         for root, dirs, files in os.walk(folder_path):
@@ -47,7 +46,6 @@ class QuickCrop:
                 if file.lower().endswith(".jpg"):
                     image_file = pathlib.PurePath(root, file)
                     images.append(image_file)
-            gc.collect()
         return images
 
     def update_status_bar(self, text):
@@ -57,7 +55,6 @@ class QuickCrop:
         self.canvas = Canvas(self.master, width=self.max_width + 2*self.padding_x,
                                           height=self.max_height + 2*self.padding_y,
                                           cursor="cross")
-
         image = Image.open(str(self.images[self.index]))
         self.should_resize = image.width > self.max_width or image.height > self.max_height
 
@@ -93,14 +90,30 @@ class QuickCrop:
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
+        # Index of the image on the status bar has +1
+        self.user_input = Entry(self.status, bg='#d6e8ee', textvariable=StringVar(self.status,self.index+1))
+        self.user_input.pack(side="left")
 
         file_name = self.images[self.index]
         img_label = os.path.splitext(file_name)[0]
-        self.update_status_bar("image %d/%d, path/label %s" % (self.index + 1, len(self.images), img_label))
+
+        static_status = '/' + str(len(self.images)) + ", path/label: " + img_label
+        self.status_label = Label(self.status, text=static_status)
+        self.status_label.place(relx=0.10, relwidth=0.65)
+
 
     def next_image(self, event=None):
-        self.index += 1
+        # Get user input to jump to the next image
+        user_index = int(self.user_input.get())
+
+        if user_index==self.index+1:
+            self.index += 1
+        else:
+            # If user wants 10th image, it is actually 9th image from 0
+            self.index = user_index-1
         self.canvas.pack_forget()
+        self.user_input.pack_forget()
+        self.status_label.pack_forget()
         if self.index < len(self.images):
             self.show_images()
         else:
@@ -108,7 +121,7 @@ class QuickCrop:
 
     # Left mouse stuff
     def on_left_mouse_press(self, event):
-        # save mouse drag start position
+        # Save mouse drag start position
         self.start_x = event.x
         self.start_y = event.y
 
@@ -117,14 +130,13 @@ class QuickCrop:
     def on_left_drag(self, event):
         current_x, current_y = (event.x, event.y)
 
-        # expand rectangle as you drag the mouse
+        # Expand rectangle as you drag the mouse
         self.canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
 
         self.crop_rectangle = (self.start_x - self.padding_x,
               self.start_y - self.padding_y, 
               current_x - self.padding_x, 
               current_y - self.padding_y)
-        #print(self.crop_rectangle)
 
     def on_left_mouse_release(self, event):
 
