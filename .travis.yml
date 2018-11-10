@@ -1,0 +1,7 @@
+os: windows
+install:
+  - pip install pyinstaller
+  - pip install -r requirements.txt
+script:
+  - pyinstaller -w --onefile .\quick_crop.py
+  - ls dist
