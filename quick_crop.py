@@ -20,8 +20,19 @@ class QuickCrop:
         self.close_button = Button(master, text="Close", command=master.quit)
         self.close_button.pack(padx=20, pady=20)
 
-        self.status = Label(master, text="Waiting for images…", bd=1, relief=SUNKEN, anchor=W)
-        self.status.pack(side=BOTTOM, fill=X)
+        self.status_frame = Frame(master, relief=SUNKEN, bd=1)
+        self.status_frame.pack(side=BOTTOM,fill=X)
+
+        self.status = Label(self.status_frame, text="Waiting for images…", bd=1)
+        self.status.pack(side=RIGHT)
+
+        self.index_input_var = IntVar()
+        self.index_input_ui = Entry(self.status_frame, textvariable=self.index_input_var, bd=1)
+        self.index_input_ui.pack(side=LEFT)
+        self.index_input_ui.bind("<Return>", self.next_image)
+
+        self.images_total = Label(self.status_frame, bd=1, anchor=W)
+        self.images_total.pack(side=LEFT)
 
         self.padding_x = 50
         self.padding_y = 50
@@ -37,43 +48,17 @@ class QuickCrop:
         else:
             self.images = images
             self.unpack_buttons()
+            self.setup_canvas()
             self.show_images()
 
-    def find_images(self, folder_path):
-        images = []
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                if file.lower().endswith(".jpg"):
-                    image_file = pathlib.PurePath(root, file)
-                    images.append(image_file)
-        return images
-
-    def update_status_bar(self, text):
-        self.status["text"] = text
-
-    def show_images(self):
+    def setup_canvas(self):
         self.canvas = Canvas(self.master, width=self.max_width + 2*self.padding_x,
-                                          height=self.max_height + 2*self.padding_y,
-                                          cursor="cross")
-        image = Image.open(str(self.images[self.index]))
-        self.should_resize = image.width > self.max_width or image.height > self.max_height
+                                    height=self.max_height + 2*self.padding_y,
+                                    cursor="cross")
 
-        if self.should_resize:
-            max_dim = self.max_width if image.width > image.height else self.max_height
-            dim_to_scale = image.width if image.width > image.height else image.height
-            self.scale_factor = max_dim/dim_to_scale
-            self.upscale_factor = dim_to_scale/max_dim
-            self.original_image = image
-            self.canvas.image = image.resize((int(image.width * self.scale_factor), int(image.height * self.scale_factor)))
-        else:
-            self.canvas.image = image
-
-        display = ImageTk.PhotoImage(self.canvas.image)
-        # We need to have a reference to display so it doesn't get garbage collected
-        self.canvas.display = display
-        self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
-
-        self.canvas.pack(expand=YES, fill=BOTH)
+        self.image_id = self.canvas.create_image(self.padding_x, self.padding_y, anchor=NW)
+        # self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
+        self.canvas.pack(expand=True, fill=BOTH, anchor=CENTER)
 
         # Left mouse - ready for crop
         self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_press)
@@ -90,37 +75,59 @@ class QuickCrop:
         # Escape stuff
         self.canvas.bind_all("<Escape>", self.cancel_crop)
 
+    def find_images(self, folder_path):
+        images = []
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.lower().endswith(".jpg"):
+                    image_file = pathlib.PurePath(root, file)
+                    images.append(image_file)
+        return images
+
+    def show_images(self):
+        file_name = self.images[self.index]
+        self.index_input_var.set(self.index)
+        self.status['text']  = file_name
+        self.images_total['text'] = "%d" % len(self.images)
+        image = Image.open(str(file_name))
+
+        self.should_resize = image.width > self.max_width or image.height > self.max_height
+        if self.should_resize:
+            max_dim = self.max_width if image.width > image.height else self.max_height
+            dim_to_scale = image.width if image.width > image.height else image.height
+            self.scale_factor = max_dim/dim_to_scale
+            self.upscale_factor = dim_to_scale/max_dim
+            self.original_image = image
+            self.canvas.image = image.resize((int(image.width * self.scale_factor), int(image.height * self.scale_factor)))
+        else:
+            self.canvas.image = image
+
+        display = ImageTk.PhotoImage(self.canvas.image)
+        # We need to have a reference to display so it doesn't get garbage collected
+        self.canvas.display = display
+        self.canvas.itemconfigure(self.image_id, image=display)
+
         self.rect = None
         self.start_x = self.start_y = None
         self.x = self.y = 0
-        # Index of the image on the status bar has +1
-        self.user_input = Entry(self.status, bg='#d6e8ee', textvariable=StringVar(self.status,self.index+1))
-        self.user_input.pack(side="left")
-
-        file_name = self.images[self.index]
-        img_label = os.path.splitext(file_name)[0]
-
-        static_status = '/' + str(len(self.images)) + ", path/label: " + img_label
-        self.status_label = Label(self.status, text=static_status)
-        self.status_label.place(relx=0.10, relwidth=0.65)
-
 
     def next_image(self, event=None):
         # Get user input to jump to the next image
-        user_index = int(self.user_input.get())
+        # user_index = int(self.user_input.get())
+        self.canvas.image.close()
 
-        if user_index==self.index+1:
-            self.index += 1
+        if event.keysym == "Return":
+            clamped = min(len(self.images) - 1, max(0, self.index_input_var.get()))
+            self.index = clamped
+            self.index_input_var.set(clamped)
         else:
-            # If user wants 10th image, it is actually 9th image from 0
-            self.index = user_index-1
-        self.canvas.pack_forget()
-        self.user_input.pack_forget()
-        self.status_label.pack_forget()
+            self.index += 1
+            self.index_input_var.set(self.index)
+        
         if self.index < len(self.images):
             self.show_images()
         else:
-            self.update_status_bar("All done!")
+            self.status["text"] = "All done!"
 
     # Left mouse stuff
     def on_left_mouse_press(self, event):
@@ -145,7 +152,7 @@ class QuickCrop:
             #print(self.crop_rectangle)
 
     def on_left_mouse_release(self, event):
-        if not self.cancelled:
+        if not self.cancelled and hasattr(self, 'crop_rectangle'):
             print(self.index, self.crop_rectangle)
 
             self.crop_rectangle = (
@@ -172,6 +179,7 @@ class QuickCrop:
                 cropped_file_name = self.images[self.index]
                 cropped_image = self.canvas.image.crop(self.crop_rectangle).save(str(cropped_file_name))
 
+            self.canvas.delete(self.rect)
             self.next_image()
 
     # Right mouse, delete the current image
