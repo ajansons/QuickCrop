@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pathlib
+import logging
 from tkinter import *
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory
@@ -43,7 +44,7 @@ class QuickCrop:
         images = []
         for root, dirs, files in os.walk(folder_path):
             for file in files:
-                if file.lower().endswith(".jpg"):
+                if file.lower().endswith(".jpg") or file.lower().endswith(".png") or file.lower().endswith(".jpeg"):
                     image_file = pathlib.PurePath(root, file)
                     images.append(image_file)
         return images
@@ -55,54 +56,62 @@ class QuickCrop:
         self.canvas = Canvas(self.master, width=self.max_width + 2*self.padding_x,
                                           height=self.max_height + 2*self.padding_y,
                                           cursor="cross")
-        image = Image.open(str(self.images[self.index]))
-        self.should_resize = image.width > self.max_width or image.height > self.max_height
+        try:
+            image = Image.open(str(self.images[self.index]))
+            self.should_resize = image.width > self.max_width or image.height > self.max_height
+            if self.should_resize:
+                max_dim = self.max_width if image.width > image.height else self.max_height
+                dim_to_scale = image.width if image.width > image.height else image.height
+                self.scale_factor = max_dim/dim_to_scale
+                self.upscale_factor = dim_to_scale/max_dim
+                self.original_image = image
+                self.canvas.image = image.resize((int(image.width * self.scale_factor), int(image.height * self.scale_factor)))
+            else:
+                self.canvas.image = image
 
-        if self.should_resize:
-            max_dim = self.max_width if image.width > image.height else self.max_height
-            dim_to_scale = image.width if image.width > image.height else image.height
-            self.scale_factor = max_dim/dim_to_scale
-            self.upscale_factor = dim_to_scale/max_dim
-            self.original_image = image
-            self.canvas.image = image.resize((int(image.width * self.scale_factor), int(image.height * self.scale_factor)))
-        else:
-            self.canvas.image = image
+            display = ImageTk.PhotoImage(self.canvas.image)
+            # We need to have a reference to display so it doesn't get garbage collected
+            self.canvas.display = display
+            self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
 
-        display = ImageTk.PhotoImage(self.canvas.image)
-        # We need to have a reference to display so it doesn't get garbage collected
-        self.canvas.display = display
-        self.canvas.create_image(self.padding_x, self.padding_y, image=display, anchor=NW)
+            self.canvas.pack(expand=YES, fill=BOTH)
 
-        self.canvas.pack(expand=YES, fill=BOTH)
+            # Left mouse - ready for crop
+            self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_press)
+            self.canvas.bind("<B1-Motion>", self.on_left_drag)
+            self.canvas.bind("<ButtonRelease-1>", self.on_left_mouse_release)
 
-        # Left mouse - ready for crop
-        self.canvas.bind("<ButtonPress-1>", self.on_left_mouse_press)
-        self.canvas.bind("<B1-Motion>", self.on_left_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_left_mouse_release)
+            # Right mouse - delete and move on
+            self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
+            self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
 
-        # Right mouse - delete and move on
-        self.canvas.bind("<ButtonPress-3>", self.on_right_mouse_press)
-        self.canvas.bind("<ButtonRelease-3>", self.on_right_mouse_release)
+            # Spacebar - do nothing and pass
+            self.canvas.bind_all("<space>", self.next_image)
 
-        # Spacebar - do nothing and pass
-        self.canvas.bind_all("<space>", self.next_image)
+            # Escape stuff
+            self.canvas.bind_all("<Escape>", self.cancel_crop)
 
-        # Escape stuff
-        self.canvas.bind_all("<Escape>", self.cancel_crop)
+            self.rect = None
+            self.start_x = self.start_y = None
+            self.x = self.y = 0
+            # Index of the image on the status bar has +1
+            self.user_input = Entry(self.status, bg='#d6e8ee', textvariable=StringVar(self.status,self.index+1))
+            self.user_input.pack(side="left")
 
-        self.rect = None
-        self.start_x = self.start_y = None
-        self.x = self.y = 0
-        # Index of the image on the status bar has +1
-        self.user_input = Entry(self.status, bg='#d6e8ee', textvariable=StringVar(self.status,self.index+1))
-        self.user_input.pack(side="left")
+            file_name = self.images[self.index]
+            img_label = os.path.splitext(file_name)[0]
 
-        file_name = self.images[self.index]
-        img_label = os.path.splitext(file_name)[0]
+            static_status = '/' + str(len(self.images)) + ", path/label: " + img_label
+            self.status_label = Label(self.status, text=static_status)
+            self.status_label.place(relx=0.10, relwidth=0.65)
+        except:
+            logging.basicConfig(filename='example.log', filemode='w', level=logging.DEBUG)
 
-        static_status = '/' + str(len(self.images)) + ", path/label: " + img_label
-        self.status_label = Label(self.status, text=static_status)
-        self.status_label.place(relx=0.10, relwidth=0.65)
+            logging.debug('debug')
+            logging.info('info')
+            logging.warning('warning')
+            logging.error('error')
+            logging.critical('critical')
 
 
     def next_image(self, event=None):
