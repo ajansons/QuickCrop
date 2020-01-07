@@ -52,9 +52,10 @@ class QuickCrop:
             self.show_images()
 
     def setup_canvas(self):
-        self.canvas = Canvas(self.master, width=self.max_width + 2*self.padding_x,
-                                    height=self.max_height + 2*self.padding_y,
-                                    cursor="cross")
+        self.canvas = Canvas(self.master,
+                             width=self.max_width + 2*self.padding_x,
+                             height=self.max_height + 2*self.padding_y,
+                             cursor="cross")
 
         self.image_id = self.canvas.create_image(self.padding_x, self.padding_y, anchor=NW)
         # self.canvas.place(relx=0.5, rely=0.5, anchor=CENTER)
@@ -77,9 +78,10 @@ class QuickCrop:
 
     def find_images(self, folder_path):
         images = []
+        acceptable_formats = {"jpg", "jpeg", "png"}
         for root, dirs, files in os.walk(folder_path):
             for file in files:
-                if file.lower().endswith(".jpg"):
+                if file.split('.')[-1].lower() in acceptable_formats:
                     image_file = pathlib.PurePath(root, file)
                     images.append(image_file)
         return images
@@ -89,7 +91,13 @@ class QuickCrop:
         self.index_input_var.set(self.index)
         self.status['text']  = file_name
         self.images_total['text'] = "%d" % len(self.images)
-        image = Image.open(str(file_name))
+
+        try:
+            image = Image.open(str(file_name))
+        except Exception as ex:
+            print("Encountered error while opening %s:" % file_name, ex)
+            self.next_image()
+            return
 
         self.should_resize = image.width > self.max_width or image.height > self.max_height
         if self.should_resize:
@@ -116,7 +124,7 @@ class QuickCrop:
         # user_index = int(self.user_input.get())
         self.canvas.image.close()
 
-        if event.keysym == "Return":
+        if event and event.keysym == "Return":
             clamped = min(len(self.images) - 1, max(0, self.index_input_var.get()))
             self.index = clamped
             self.index_input_var.set(clamped)
@@ -153,7 +161,6 @@ class QuickCrop:
 
     def on_left_mouse_release(self, event):
         if not self.cancelled and hasattr(self, 'crop_rectangle'):
-            print(self.index, self.crop_rectangle)
 
             self.crop_rectangle = (
                 self.snap_x(self.crop_rectangle[0]),
@@ -164,7 +171,7 @@ class QuickCrop:
 
             no_area = self.crop_rectangle[0] == self.crop_rectangle[2] or self.crop_rectangle[1] == self.crop_rectangle[3]
 
-            print(self.index, self.crop_rectangle)
+            print("Cropping image at index", self.index, "Crop coordinates:", self.crop_rectangle)
 
             if not no_area:
                 if self.should_resize:
