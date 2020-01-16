@@ -42,6 +42,8 @@ class QuickCrop:
 
     def choose_folder(self):
         folder_selected = askdirectory()
+        if not folder_selected: # If the user clicked cancel
+            return
         images = self.find_images(folder_selected)
         if images == []:
             messagebox.showerror("Error", "Couldn't find any images in %s" % folder_selected)
